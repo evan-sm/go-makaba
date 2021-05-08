@@ -191,6 +191,45 @@ func (p *SuperAgent) File(file ...interface{}) *SuperAgent {
 		log.Println(file)
 
 		switch v := reflect.ValueOf(file); v.Kind() {
+		case reflect.Slice:
+			s := makeSliceOfReflectValue(v)
+			//reflect.ValueOf(value).Int()
+
+			for _, v := range s {
+				// Check for URL string
+				if u, err := url.Parse(reflect.ValueOf(v).String()); err == nil && u.Scheme != "" && u.Host != "" {
+					log.Println("true")
+
+					resp, err := http.Get(reflect.ValueOf(v).String())
+					if err != nil {
+						log.Println("Failed to fetch data from HTTP URL")
+					}
+
+					data, err := io.ReadAll(resp.Body)
+					if err != nil {
+						log.Println("Failed to io.ReadAll: %v", err)
+					}
+
+					p.FileData = append(p.FileData, FileData{
+						Filename:  filename,
+						Fieldname: fieldname,
+						Data:      data,
+					})
+					continue
+				}
+				data, err := ioutil.ReadFile(reflect.ValueOf(v).String())
+				if err != nil {
+					p.Errors = append(p.Errors, err)
+					continue
+				}
+
+				p.FileData = append(p.FileData, FileData{
+					Filename:  filename,
+					Fieldname: fieldname,
+					Data:      data,
+				})
+				continue
+			}
 		case reflect.String:
 			// Check for URL string
 			if u, err := url.Parse(v.String()); err == nil && u.Scheme != "" && u.Host != "" {
@@ -442,4 +481,19 @@ func (g *GetData) Thread(keyword string) (string, string, error) {
 		}
 	}
 	return "", "", fmt.Errorf("Couldn't find any threads matching this \"%v\" keyword", keyword)
+}
+
+func makeSliceOfReflectValue(v reflect.Value) (slice []interface{}) {
+
+	kind := v.Kind()
+	if kind != reflect.Slice && kind != reflect.Array {
+		return slice
+	}
+
+	slice = make([]interface{}, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		slice[i] = v.Index(i).Interface()
+	}
+
+	return slice
 }
