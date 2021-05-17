@@ -158,7 +158,7 @@ func (p *SuperAgent) Thread(thread string) *SuperAgent {
 
 // Used to set name field
 func (p *SuperAgent) Name(name string) *SuperAgent {
-	p.BodyData["name"] = ""
+	p.BodyData["name"] = name
 	return p
 }
 
